@@ -191,6 +191,14 @@ config ZSMALLOC_STAT
 	  information to userspace via debugfs.
 	  If unsure, say N.
 
+config CIFRA_CUSTOM_FREE
+	bool "Enable custom free hook for genpools"
+	default n
+	help
+	  This option enables a custom free hook for genpools.  This is
+	  useful for some architectures that need to do special handling
+	  when freeing memory from a genpool.
+
 menu "SLAB allocator options"
 
 choice

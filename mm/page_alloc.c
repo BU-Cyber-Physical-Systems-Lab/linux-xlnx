@@ -84,6 +84,13 @@
 #include "page_reporting.h"
 #include "swap.h"
 
+#ifdef CONFIG_CIFRA_CUSTOM_FREE
+#include <linux/cifra_custom_free.h>
+
+int (*cifra_custom_free_ptr)(struct page *page, unsigned long order) = NULL;
+EXPORT_SYMBOL(cifra_custom_free_ptr);
+#endif
+
 /* Free Page Internal flags: for internal, non-pcp variants of free_pages(). */
 typedef int __bitwise fpi_t;
 
@@ -1402,7 +1409,15 @@ static __always_inline bool free_pages_prepare(struct page *page,
 			unsigned int order, bool check_free, fpi_t fpi_flags)
 {
 	int bad = 0;
-	bool init = want_init_on_free();
+	bool init = 0;
+
+	#ifdef CONFIG_CIFRA_CUSTOM_FREE
+	if (cifra_custom_free_ptr)
+		if (cifra_custom_free_ptr(page, order))
+			return false;
+	#endif
+	
+	init = want_init_on_free();
 
 	VM_BUG_ON_PAGE(PageTail(page), page);
 
@@ -3383,6 +3398,12 @@ static bool free_unref_page_prepare(struct page *page, unsigned long pfn,
 							unsigned int order)
 {
 	int migratetype;
+
+	#ifdef CONFIG_CIFRA_CUSTOM_FREE
+	if (cifra_custom_free_ptr)
+		if (cifra_custom_free_ptr(page, order))
+			return false;
+	#endif
 
 	if (!free_pcp_prepare(page, order))
 		return false;

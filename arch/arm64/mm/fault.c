@@ -26,6 +26,10 @@
 #include <linux/preempt.h>
 #include <linux/hugetlb.h>
 
+#ifdef CONFIG_CIFRA_DEBUG
+#include <linux/cifra_debug.h>
+#endif
+
 #include <asm/acpi.h>
 #include <asm/bug.h>
 #include <asm/cmpxchg.h>
@@ -41,6 +45,17 @@
 #include <asm/system_misc.h>
 #include <asm/tlbflush.h>
 #include <asm/traps.h>
+
+
+#ifdef CONFIG_CIFRA_DEBUG
+// int do_mem_abort_handler(unsigned long esr, struct pt_regs *regs, unsigned long addr) {
+// 	// pr_info("do_mem_abort_handler called with esr: 0x%lx, addr: 0x%lx\n", esr, addr);
+// 	return 0;
+// }
+
+int (*do_mem_abort_ptr)(unsigned long esr, struct pt_regs *regs, unsigned long far, unsigned long addr, void *fault_info_fn, int fault_info_sig, int fault_info_code, const char *fault_info_name) = NULL;
+EXPORT_SYMBOL(do_mem_abort_ptr);
+#endif
 
 struct fault_info {
 	int	(*fn)(unsigned long far, unsigned long esr,
@@ -818,6 +833,12 @@ void do_mem_abort(unsigned long far, unsigned long esr, struct pt_regs *regs)
 	const struct fault_info *inf = esr_to_fault_info(esr);
 	unsigned long addr = untagged_addr(far);
 
+	#ifdef CONFIG_CIFRA_DEBUG
+	if (do_mem_abort_ptr)
+		if (do_mem_abort_ptr(esr, regs, far, addr, inf->fn, inf->sig, inf->code, inf->name))
+			pr_alert("do_mem_abort_ptr returned non 0\n");
+	#endif
+		
 	if (!inf->fn(far, esr, regs))
 		return;
 
